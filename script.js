@@ -36,6 +36,26 @@ fetch(requests.fetchTrending)
     banner.style.backgroundImage = "url("+ banner_url + setMovie.backdrop_path + ")";
     banner_desc.innerText = truncate(setMovie.overview , 150);
     banner_title.innerText = setMovie.title || setMovie.name || setMovie.original_name;
+
+    const watchBtn = document.getElementById('watch-trailer');
+    watchBtn.addEventListener('click', () => {
+  fetch(`${base_url}/movie/${setMovie.id}?${api}&append_to_response=videos`)
+    .then(res => res.json())
+    .then(movie => {
+      const trailer = movie.videos?.results.find(
+        v => v.type === "Trailer" && v.site === "YouTube"
+      );
+      if (trailer) {
+        window.open(`https://www.youtube.com/watch?v=${trailer.key}`, "_blank");
+      } else {
+        alert("Trailer not available.");
+      }
+    })
+    .catch(() => {
+      alert("Unable to fetch trailer.");
+    });
+});
+    
 })
 .catch((error) => {
         console.error("Error fetching banner movie:", error);
