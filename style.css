@@ -103,6 +103,29 @@ body {
     max-width:360px;
     height:80px;
 }
+.banner-btn {
+  display: inline-block;
+  margin-top: 3rem;
+  padding: 0.6rem 1.2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+  background-color: #e50914;        
+  border: none;
+  border-radius: 0.3rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.banner-btn:hover {
+  background-color: #f6121d;        
+  transform: scale(1.05);
+}
+
+.banner-btn:active {
+  background-color: #b20710;       
+  transform: scale(0.98);
+}
 
 #banner-fade-bottom{
     margin-top:9rem;
