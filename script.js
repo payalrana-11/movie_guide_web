@@ -13,6 +13,66 @@ const requests = {
     fetchSearch: `${BASE_URL}/search/movie?${API_KEY}&query=`
 };
 
+// Favorites management
+function getFavorites() {
+    return JSON.parse(localStorage.getItem('favorites')) || [];
+}
+
+function saveFavorites(favorites) {
+    localStorage.setItem('favorites', JSON.stringify(favorites));
+}
+
+function isFavorite(movieId) {
+    return getFavorites().includes(movieId);
+}
+
+function toggleFavorite(movieId) {
+    let favorites = getFavorites();
+    if (favorites.includes(movieId)) {
+        favorites = favorites.filter(id => id !== movieId);
+    } else {
+        favorites.push(movieId);
+    }
+    saveFavorites(favorites);
+    return favorites.includes(movieId);
+}
+
+// Create movie card with favorite button
+function createCard(movie) {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.setAttribute("data-id", movie.id);
+
+    const isFav = isFavorite(movie.id);
+    card.innerHTML = `
+        <div class="img">
+            <img src="${IMG_URL + movie.poster_path}" alt="${movie.title || movie.name}">
+            <button class="favorite-btn ${isFav ? 'favorited' : ''}" data-id="${movie.id}">
+                <i class="fa${isFav ? 's' : 'r'} fa-heart"></i>
+            </button>
+        </div>
+        <div class="info">
+            <h3>${movie.title || movie.name}</h3>
+            <div class="single-info">
+                <span>${movie.vote_average?.toFixed(1) || "N/A"}⭐</span>
+            </div>
+        </div>
+    `;
+
+    // Add event listener to favorite button
+    const favBtn = card.querySelector('.favorite-btn');
+    favBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent card click
+        const isNowFav = toggleFavorite(movie.id);
+        favBtn.classList.toggle('favorited', isNowFav);
+        favBtn.innerHTML = `<i class="fa${isNowFav ? 's' : 'r'} fa-heart"></i>`;
+        // Reload favorites if needed
+        loadFavorites();
+    });
+
+    return card;
+}
+
 // Truncate string utility
 function truncate(str, n) {
     return str.length > n ? str.substr(0, n - 1) + "..." : str;
@@ -42,7 +102,11 @@ async function setupBanner() {
         const bannerTitle = document.getElementById("banner-title");
         const bannerDesc = document.getElementById("banner-description");
 
-        banner.style.backgroundImage = `url(${BANNER_URL + setMovie.backdrop_path})`;
+        if (setMovie.backdrop_path) {
+            banner.style.backgroundImage = `url(${BANNER_URL + setMovie.backdrop_path})`;
+        } else {
+            console.warn("No backdrop path for banner movie");
+        }
         bannerDesc.innerText = truncate(setMovie.overview, 150);
         bannerTitle.innerText = setMovie.title || setMovie.name || setMovie.original_name;
 
@@ -91,22 +155,7 @@ async function loadTrendingMovies() {
 
         data.results.forEach((movie) => {
             if (movie.poster_path) {
-                const card = document.createElement("div");
-                card.className = "card";
-                card.setAttribute("data-id", movie.id);
-
-                card.innerHTML = `
-                    <div class="img">
-                        <img src="${IMG_URL + movie.poster_path}" alt="${movie.title || movie.name}">
-                    </div>
-                    <div class="info">
-                        <h3>${movie.title || movie.name}</h3>
-                        <div class="single-info">
-                            <span>${movie.vote_average?.toFixed(1) || "N/A"}⭐</span>
-                        </div>
-                    </div>
-                `;
-
+                const card = createCard(movie);
                 trendingGrid.appendChild(card);
             }
         });
@@ -123,26 +172,48 @@ async function loadTopRatedMovies() {
 
         data.results.forEach(movie => {
             if (movie.poster_path) {
-                const card = document.createElement("div");
-                card.className = "card";
-                card.setAttribute("data-id", movie.id);
-                card.innerHTML = `
-                    <div class="img">
-                        <img src="${IMG_URL + movie.poster_path}" alt="${movie.title}">
-                    </div>
-                    <div class="info">
-                        <h3>${movie.title}</h3>
-                        <div class="single-info">
-                            <span>${movie.vote_average?.toFixed(1) || "N/A"}⭐</span>
-                        </div>
-                    </div>
-                `;
-
+                const card = createCard(movie);
                 topRatedGrid.appendChild(card);
             }
         });
     } catch (error) {
         console.error("Error loading top rated movies:", error);
+    }
+}
+
+// Load favorite movies
+async function loadFavorites() {
+    try {
+        const favoritesGrid = document.getElementById("favorites-grid");
+        favoritesGrid.innerHTML = ""; // Clear existing
+
+        const favoriteIds = getFavorites();
+        if (favoriteIds.length === 0) {
+            favoritesGrid.innerHTML = "<p>No favorite movies yet. Click the heart icon on movies to add them!</p>";
+            return;
+        }
+
+        // Fetch details for each favorite movie
+        const favoriteMovies = [];
+        for (const id of favoriteIds) {
+            try {
+                const movie = await fetchData(`${BASE_URL}/movie/${id}?${API_KEY}`);
+                if (movie.poster_path) {
+                    favoriteMovies.push(movie);
+                }
+            } catch (error) {
+                console.error(`Error fetching favorite movie ${id}:`, error);
+                // Remove invalid favorite
+                toggleFavorite(id);
+            }
+        }
+
+        favoriteMovies.forEach(movie => {
+            const card = createCard(movie);
+            favoritesGrid.appendChild(card);
+        });
+    } catch (error) {
+        console.error("Error loading favorites:", error);
     }
 }
 
@@ -189,21 +260,7 @@ async function searchMovies(query) {
         data.results.forEach(movie => {
             if (!movie.poster_path) return;
 
-            const card = document.createElement("div");
-            card.className = "card";
-            card.setAttribute("data-id", movie.id);
-            card.innerHTML = `
-                <div class="img">
-                    <img src="${IMG_URL + movie.poster_path}" alt="${movie.title}">
-                </div>
-                <div class="info">
-                    <h3>${movie.title}</h3>
-                    <div class="single-info">
-                        <span>${movie.vote_average?.toFixed(1) || "N/A"}⭐</span>
-                    </div>
-                </div>
-            `;
-
+            const card = createCard(movie);
             searchGrid.appendChild(card);
         });
 
@@ -292,6 +349,7 @@ async function init() {
     await setupBanner();
     await loadTrendingMovies();
     await loadTopRatedMovies();
+    await loadFavorites();
 }
 
 init();
