@@ -185,37 +185,34 @@ async function loadTopRatedMovies() {
 async function loadFavorites() {
     try {
         const favoritesGrid = document.getElementById("favorites-grid");
-        favoritesGrid.innerHTML = ""; // Clear existing
+        favoritesGrid.innerHTML = "";
 
         const favoriteIds = getFavorites();
+
         if (favoriteIds.length === 0) {
-            favoritesGrid.innerHTML = "<p>No favorite movies yet. Click the heart icon on movies to add them!</p>";
+            favoritesGrid.innerHTML = "<p>No favorite movies yet.</p>";
             return;
         }
 
-        // Fetch details for each favorite movie
-        const favoriteMovies = [];
         for (const id of favoriteIds) {
             try {
                 const movie = await fetchData(`${BASE_URL}/movie/${id}?${API_KEY}`);
-                if (movie.poster_path) {
-                    favoriteMovies.push(movie);
+
+                if (movie && movie.poster_path) {
+                    const card = createCard(movie);
+                    favoritesGrid.appendChild(card);
                 }
+
             } catch (error) {
-                console.error(`Error fetching favorite movie ${id}:`, error);
-                // Remove invalid favorite
-                toggleFavorite(id);
+                console.error("Skipping failed movie:", id);
             }
         }
 
-        favoriteMovies.forEach(movie => {
-            const card = createCard(movie);
-            favoritesGrid.appendChild(card);
-        });
     } catch (error) {
         console.error("Error loading favorites:", error);
     }
 }
+          
 
 // Search functionality
 const input = document.getElementById('search');
